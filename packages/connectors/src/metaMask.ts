@@ -325,7 +325,9 @@ export function metaMask(parameters: MetaMaskParameters = {}) {
     },
     async onConnect(connectInfo) {
       const accounts = await this.getAccounts()
-      if (accounts.length === 0) return
+      if (accounts.length === 0) {
+        throw new Error('No accounts selected')
+      }
 
       const chainId = Number(connectInfo.chainId)
       config.emitter.emit('connect', { accounts, chainId })
