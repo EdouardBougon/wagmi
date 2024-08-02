@@ -94,25 +94,6 @@ export function metaMask(parameters: MetaMaskParameters = {}) {
           displayUri = undefined
         }
 
-        // Manage EIP-1193 event listeners
-        // https://eips.ethereum.org/EIPS/eip-1193#events
-        if (connect) {
-          provider.removeListener('connect', connect)
-          connect = undefined
-        }
-        if (!accountsChanged) {
-          accountsChanged = this.onAccountsChanged.bind(this)
-          provider.on('accountsChanged', accountsChanged as Listener)
-        }
-        if (!chainChanged) {
-          chainChanged = this.onChainChanged.bind(this)
-          provider.on('chainChanged', chainChanged as Listener)
-        }
-        if (!disconnect) {
-          disconnect = this.onDisconnect.bind(this)
-          provider.on('disconnect', disconnect as Listener)
-        }
-
         return { accounts, chainId: currentChainId }
       } catch (err) {
         const error = err as RpcError
