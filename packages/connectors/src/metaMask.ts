@@ -32,7 +32,17 @@ import {
 } from 'viem'
 
 export type MetaMaskParameters = Compute<
-  ExactPartial<Omit<MetaMaskSDKOptions, '_source' | 'readonlyRPCMap'>>
+  ExactPartial<
+    Omit<
+      MetaMaskSDKOptions,
+      | '_source'
+      | 'readonlyRPCMap'
+      | 'useDeeplink'
+      | 'injectProvider'
+      | 'forceInjectProvider'
+      | 'forceDeleteProvider'
+    >
+  >
 >
 
 metaMask.type = 'metaMask' as const
@@ -47,6 +57,7 @@ export function metaMask(parameters: MetaMaskParameters = {}) {
   let sdk: MetaMaskSDK
   let provider: Provider | undefined
   let providerPromise: Promise<typeof provider>
+  let cachedDisplayUri: string | undefined
 
   let accountsChanged: Connector['onAccountsChanged'] | undefined
   let chainChanged: Connector['onChainChanged'] | undefined
@@ -77,6 +88,9 @@ export function metaMask(parameters: MetaMaskParameters = {}) {
 
       try {
         if (!accounts?.length) {
+          if (cachedDisplayUri) {
+            provider.emit('display_uri', cachedDisplayUri)
+          }
           const requestedAccounts = (await sdk.connect()) as string[]
           accounts = requestedAccounts.map((x) => getAddress(x))
         }
@@ -187,7 +201,10 @@ export function metaMask(parameters: MetaMaskParameters = {}) {
             }),
           ),
           dappMetadata: parameters.dappMetadata ?? { name: 'wagmi' },
-          useDeeplink: parameters.useDeeplink ?? true,
+          useDeeplink: true,
+          injectProvider: false,
+          forceInjectProvider: false,
+          forceDeleteProvider: false,
         })
         await sdk.init()
         return sdk.getProvider()!
@@ -368,6 +385,9 @@ export function metaMask(parameters: MetaMaskParameters = {}) {
 
       config.emitter.emit('disconnect')
 
+      // Remove cached display URI
+      cachedDisplayUri = undefined
+
       // Manage EIP-1193 event listeners
       if (!accountsChanged) {
         accountsChanged = this.onAccountsChanged.bind(this)
@@ -386,8 +406,14 @@ export function metaMask(parameters: MetaMaskParameters = {}) {
         provider.on('connect', connect as Listener)
       }
     },
-    onDisplayUri(uri) {
-      config.emitter.emit('message', { type: 'display_uri', data: uri })
+    async onDisplayUri(uri: string) {
+      // Cache display uri
+      cachedDisplayUri = uri
+
+      config.emitter.emit('message', {
+        type: 'display_uri',
+        data: uri,
+      })
     },
   }))
 }
