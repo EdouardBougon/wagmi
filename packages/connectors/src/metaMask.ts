@@ -315,6 +315,11 @@ export function metaMask(parameters: MetaMaskParameters = {}) {
       const chain = config.chains.find((x) => x.id === chainId)
       if (!chain) throw new SwitchChainError(new ChainNotConfiguredError())
 
+      // During `'wallet_switchEthereumChain'`, MetaMask makes a `'net_version'` RPC call to the target chain.
+      // If this request fails, MetaMask does not emit the `'chainChanged'` event, but will still switch the chain.
+      // To counter this behavior, we request and emit the current chain ID to confirm the chain switch either via
+      // this callback or an externally emitted `'chainChanged'` event.
+      // https://github.com/MetaMask/metamask-extension/issues/24247
       const sendAndWaitForChangeEvent = async (chainId: number) => {
         await new Promise<void>((resolve) => {
           const listener = ((data) => {
@@ -406,11 +411,6 @@ export function metaMask(parameters: MetaMaskParameters = {}) {
             params: [{ chainId: numberToHex(chainId) }],
           })
         }
-        // During `'wallet_switchEthereumChain'`, MetaMask makes a `'net_version'` RPC call to the target chain.
-        // If this request fails, MetaMask does not emit the `'chainChanged'` event, but will still switch the chain.
-        // To counter this behavior, we request and emit the current chain ID to confirm the chain switch either via
-        // this callback or an externally emitted `'chainChanged'` event.
-        // https://github.com/MetaMask/metamask-extension/issues/24247
         await waitForChainIdToSync()
         await sendAndWaitForChangeEvent(chainId)
 
